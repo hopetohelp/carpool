@@ -103,16 +103,24 @@ export default function Login({ onDone }: { onDone: () => void }) {
         <div className="card-surface p-5 shadow-[var(--shadow-2)]">
           <h2 className="text-lg font-bold mb-4">{title}</h2>
 
-          {/* Google מוצג רק כשהוא באמת מופעל, כדי לא להוביל למסך שגיאה */}
-          {google && (mode === "in" || mode === "up") && (
+          {/* Google מוצג תמיד, ומושבת כל עוד הוא לא הופעל בשירות האימות.
+              כפתור מושבת עם הסבר עדיף על העלמה: ככה ברור שהאפשרות מתוכננת
+              ולא נשכחה, ואף אחד לא מגיע למסך שגיאה. */}
+          {(mode === "in" || mode === "up") && (
             <>
               <Button
                 type="button" variant="secondary" size="lg" block
+                disabled={!google}
                 icon={<GoogleLogo size={19} weight="bold" />}
                 onClick={() => void signInWithGoogle().catch((e) => setErr(e.message))}
               >
                 המשך עם Google
               </Button>
+              {!google && (
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  בפיתוח. בינתיים אפשר להיכנס עם מייל וסיסמה.
+                </p>
+              )}
               <div className="flex items-center gap-3 my-5 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />או<span className="h-px flex-1 bg-border" />
               </div>
