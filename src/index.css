@@ -1,0 +1,236 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   שפה עיצובית
+   ==========================================================================
+   נייר חמים, דיו כהה, ומבטא אחד: ירוק אורן. נבחר להיות קריא בבוקר על מסך
+   טלפון באור יום, ולא להיראות כמו עוד לוח בקרה כללי.
+
+   שלושה כללים שנשמרים בכל הכלי:
+   1. מבטא אחד בלבד. הירוק מסמן "טוב/סגור/פעיל" — ואין צבע מבטא שני.
+   2. פינות לפי תפקיד: תגית=עגולה מלאה · כפתור ושדה=12px · כרטיס=16px ·
+      מגירה=22px. אין ערכים אחרים.
+   3. היררכיה נבנית ממשקל וצבע, לא מגודל. כותרות גדולות רק כשהן באמת ראשיות.
+   ========================================================================== */
+
+/* Rubik — מתארח כאן ולא נטען מרשת חיצונית, כדי שהכלי ייטען מהר גם בחיבור
+   סלולרי איטי ולא ידלוף מידע על המשתמשים לשירות חיצוני.
+   קובץ אחד לכל המשקלים (פונט משתנה), 44 קילובייט לשתי השפות יחד. */
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/rubik-hebrew.woff2") format("woff2");
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/rubik-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* --- נייר ודיו --- */
+    --background: 40 30% 92%;
+    --foreground: 170 16% 10%;
+    --card: 44 60% 98%;
+    --card-foreground: 170 16% 10%;
+    --popover: 44 60% 98%;
+    --popover-foreground: 170 16% 10%;
+
+    /* --- המבטא היחיד --- */
+    --primary: 166 62% 24%;
+    --primary-foreground: 44 60% 98%;
+    --accent: 166 34% 88%;
+    --accent-foreground: 166 62% 18%;
+
+    /* --- משטחים שקטים --- */
+    --secondary: 40 22% 87%;
+    --secondary-foreground: 170 14% 18%;
+    --muted: 40 20% 89%;
+    --muted-foreground: 172 8% 40%;
+
+    --destructive: 6 58% 40%;
+    --destructive-foreground: 44 60% 98%;
+    --border: 38 18% 82%;
+    --input: 38 18% 82%;
+    --ring: 166 62% 24%;
+
+    /* --- מצבים סמנטיים (כסף וסטטוסים) --- */
+    --ok: 166 62% 24%;
+    --ok-soft: 166 34% 88%;
+    --warn: 32 78% 34%;
+    --warn-soft: 38 68% 88%;
+    --danger: 6 58% 40%;
+    --danger-soft: 8 56% 92%;
+
+    /* --- פינות: ערך אחד לכל תפקיד --- */
+    --radius: 0.75rem;      /* כפתור, שדה קלט */
+    --r-card: 1rem;
+    --r-sheet: 1.375rem;
+
+    /* --- הגבהה: צל מגוון לפי גוון הרקע, לא שחור --- */
+    --shadow-1: 0 1px 2px hsl(170 20% 12% / 0.06), 0 1px 1px hsl(170 20% 12% / 0.04);
+    --shadow-2: 0 2px 8px hsl(170 20% 12% / 0.07), 0 1px 2px hsl(170 20% 12% / 0.05);
+    --shadow-3: 0 12px 32px hsl(170 20% 12% / 0.14), 0 2px 8px hsl(170 20% 12% / 0.08);
+
+    /* --- תנועה --- */
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  :root[data-theme="dark"],
+  .dark {
+    color-scheme: dark;
+
+    /* מצב כהה חמים — אותה משפחת גוונים, לא אפור כחלחל */
+    --background: 175 14% 8%;
+    --foreground: 40 22% 93%;
+    --card: 174 12% 12%;
+    --card-foreground: 40 22% 93%;
+    --popover: 174 12% 12%;
+    --popover-foreground: 40 22% 93%;
+
+    --primary: 164 46% 54%;
+    --primary-foreground: 175 30% 8%;
+    --accent: 168 24% 20%;
+    --accent-foreground: 164 46% 78%;
+
+    --secondary: 174 10% 18%;
+    --secondary-foreground: 40 20% 90%;
+    --muted: 174 10% 16%;
+    --muted-foreground: 40 10% 62%;
+
+    --destructive: 6 56% 58%;
+    --destructive-foreground: 175 30% 8%;
+    --border: 174 9% 22%;
+    --input: 174 9% 22%;
+    --ring: 164 46% 54%;
+
+    --ok: 164 46% 54%;
+    --ok-soft: 168 26% 18%;
+    --warn: 36 62% 58%;
+    --warn-soft: 34 26% 18%;
+    --danger: 6 56% 58%;
+    --danger-soft: 6 26% 19%;
+
+    --shadow-1: 0 1px 2px hsl(0 0% 0% / 0.34);
+    --shadow-2: 0 2px 10px hsl(0 0% 0% / 0.40);
+    --shadow-3: 0 14px 36px hsl(0 0% 0% / 0.52);
+  }
+
+  * { @apply border-border; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Rubik, "Noto Sans Hebrew", "Segoe UI", system-ui, sans-serif;
+    font-feature-settings: "kern" 1;
+    letter-spacing: -0.005em;
+  }
+
+  /* מרווח לסרגל הניווט התחתון — רק במסכים שבהם הוא באמת מוצג.
+     במסכי הכניסה אין סרגל, ומרווח קבוע היה יוצר שם שטח ריק מיותר. */
+  .pad-nav { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+
+  /* כותרות: הידוק אופטי — בגדלים גדולים המרווח הרגיל נראה רופף */
+  h1, h2, h3 { letter-spacing: -0.022em; }
+
+  /* מספרים תמיד משמאל לימין וברוחב אחיד, כדי שטורי כסף יתיישרו */
+  .num {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* שדות קלט מתחת ל-16px גורמים לאייפון להגדיל את הדף בכל הקלדה */
+  input, select, textarea { font-size: max(16px, 1rem); }
+
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+
+  ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+}
+
+@layer components {
+  /* ---------- משטחים ---------- */
+  .card-surface {
+    @apply bg-card border border-border;
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+  }
+
+  /* כרטיס שאפשר ללחוץ עליו — משוב פיזי קצר בלחיצה */
+  .card-tap {
+    transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+  }
+  .card-tap:active { transform: scale(0.988); box-shadow: var(--shadow-2); }
+
+  /* ---------- תגיות מצב ---------- */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+    line-height: 1.15;
+  }
+  .chip-ok     { background: hsl(var(--ok-soft));     color: hsl(var(--ok)); }
+  .chip-warn   { background: hsl(var(--warn-soft));   color: hsl(var(--warn)); }
+  .chip-danger { background: hsl(var(--danger-soft)); color: hsl(var(--danger)); }
+  .chip-muted  { @apply bg-muted text-muted-foreground; }
+
+  /* פס צבע דק בקצה כרטיס — מסמן מצב בלי להציף בצבע */
+  .edge-ok     { box-shadow: inset 3px 0 0 hsl(var(--ok)),     var(--shadow-1); }
+  .edge-warn   { box-shadow: inset 3px 0 0 hsl(var(--warn)),   var(--shadow-1); }
+  .edge-danger { box-shadow: inset 3px 0 0 hsl(var(--danger)), var(--shadow-1); }
+  .edge-muted  { box-shadow: inset 3px 0 0 hsl(var(--border)), var(--shadow-1); }
+
+  /* ---------- פריסה ---------- */
+  .screen { @apply mx-auto w-full max-w-xl px-4; }
+
+  /* כותרת קטע: מפרידה בלי לצרוך גובה */
+  .section-title {
+    @apply text-[13px] font-semibold text-muted-foreground mb-2;
+    letter-spacing: 0.005em;
+  }
+
+  /* מספר גדול — לסכומי כסף ולמדדים */
+  .stat {
+    @apply num font-bold tabular-nums;
+    letter-spacing: -0.03em;
+  }
+
+  /* ---------- כניסה לתצוגה ---------- */
+  /* מונפש כדי להראות סדר: מה נכנס ראשון הוא מה שחשוב קודם */
+  .enter {
+    animation: enter 0.42s var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+/* טבלת הלוח השבועי גוללת לצדדים בלי לגרור את כל הדף */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll-x::-webkit-scrollbar { height: 6px; }
+.scroll-x::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .enter { animation: none; opacity: 1; transform: none; }
+}

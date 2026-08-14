@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>נסיעות שיתופיות</title>
+    <meta name="description" content="ניהול נסיעות משותפות בין עמיתים לעבודה — מי נוסע, מי מצטרף, ומי חייב למי." />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1f6f5c" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="נסיעות" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="icon" href="/icons/icon-192.png" />
+
+    <!-- הכלי פנימי לארגון ולא אמור להופיע בחיפוש -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <script>
+      // מפעיל את ערכת הצבעים לפני הציור הראשון, כדי שלא תהיה הבזקה לבנה
+      (function () {
+        var saved = localStorage.getItem("carpool-theme") || "system";
+        var dark = saved === "dark" ||
+          (saved === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

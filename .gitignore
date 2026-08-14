@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vite/
+
+# קובץ קישור מקומי של Netlify — לא שייך לריפו
+.netlify/
+
+# קובץ הגדרות מקומי לבנייה — ערכים אמיתיים, לא נכנס לריפו
+.env.production
