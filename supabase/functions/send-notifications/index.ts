@@ -114,6 +114,8 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               from: cfg.mail_from,
+              // ראו את ההסבר ב-auth-account: בלי זה תשובות של נמענים נעלמות
+              ...(cfg.mail_reply_to ? { reply_to: cfg.mail_reply_to } : {}),
               to: [to],
               subject: n.title,
               text: `${n.body ?? ""}\n\n${appUrl}/#${n.link ?? "/"}`,

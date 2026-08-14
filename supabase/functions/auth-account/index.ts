@@ -56,7 +56,16 @@ async function sendMail(cfg: Record<string, string>, to: string, subject: string
         Authorization: `Bearer ${cfg.resend_api_key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: cfg.mail_from, to: [to], subject, html }),
+      body: JSON.stringify({
+        from: cfg.mail_from,
+        // כתובת לתשובות. בלעדיה "השב" חוזר לכתובת השולח, ואם באותו דומיין
+        // לא הופעלה קבלת דואר — התשובה נעלמת בלי שאף אחד יידע. כשההגדרה
+        // ריקה המפתח לא נשלח בכלל, וההתנהגות נשארת בדיוק כשהייתה.
+        ...(cfg.mail_reply_to ? { reply_to: cfg.mail_reply_to } : {}),
+        to: [to],
+        subject,
+        html,
+      }),
     });
     if (!res.ok) {
       console.log(`mail failed: status ${res.status} — ${(await res.text()).slice(0, 200)}`);

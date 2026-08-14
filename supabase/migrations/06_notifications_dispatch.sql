@@ -25,6 +25,9 @@ revoke all on table app_config from anon, authenticated;
 --   functions_url  — כתובת פונקציות השרת
 --   app_url        — כתובת האתר, לקישורים במיילים ובהתראות
 --   resend_api_key, mail_from        — שליחת מייל
+--   mail_reply_to  — לא חובה. הכתובת שאליה חוזרות תשובות של נמענים. אם היא
+--                    ריקה, "השב" חוזר לכתובת השולח — ואם באותו דומיין לא
+--                    הופעלה קבלת דואר, התשובה נעלמת בשקט.
 --   vapid_public, vapid_private, vapid_subject — התראות דחיפה
 insert into app_config(key, value)
 values ('setup_code',  upper(substring(encode(gen_random_bytes(8),'hex') from 1 for 10))),
