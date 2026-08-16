@@ -2,19 +2,21 @@ import { SteeringWheel } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/store";
 import { go } from "@/App";
-import { Card, Empty, Field, Money, Section } from "@/components/app/ui";
+import { Card, Chip, Empty, Field, Money, Section } from "@/components/app/ui";
 import { RideCard } from "@/components/app/RideCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as api from "@/lib/api";
-import { friendlyDate, isoDate, money } from "@/lib/format";
+import { dayName, friendlyDate, isoDate, money, shortTime } from "@/lib/format";
 
 // ============================================================================
 // הנסיעות שלי — עתידיות, היסטוריה, והוספה ידנית של נסיעה שלא נרשמה מראש.
 // ============================================================================
 
 export default function MyRides() {
-  const { me, rides, bookings, members, charges, run } = useApp();
+  const {
+    me, rides, bookings, members, charges, templates, subscriptions, memberById, run,
+  } = useApp();
   const [showManual, setShowManual] = useState(false);
   const [mDriver, setMDriver] = useState("");
   const [mDate, setMDate] = useState(isoDate(new Date()));
@@ -46,6 +48,8 @@ export default function MyRides() {
     .sort((a, b) => b.departs_at.localeCompare(a.departs_at));
 
   const otherDrivers = members.filter((m) => m.id !== me.id);
+  const subscribedIds = new Set(subscriptions.map((s) => s.template_id));
+  const joinableTemplates = templates.filter((t) => t.driver_id !== me.id);
   const chargeFor = (rideId: string) =>
     charges.find((c) => c.ride_id === rideId && c.payer_id === me.id);
 
@@ -74,6 +78,51 @@ export default function MyRides() {
           </p>
         )}
       </Section>
+
+      {/* ---------- מנוי לנסיעה קבועה ---------- */}
+      {/* המנוע לזה קיים ורץ מזמן: המשימה שמפרסמת נסיעות קבועות רושמת כל מנוי
+          אוטומטית כמאושר. מה שחסר היה הכפתור. בלעדיו נוסע יומיומי נרשם
+          בסביבות עשרים פעם בחודש לאותה נסיעה עצמה. */}
+      {joinableTemplates.length > 0 && (
+        <Section title="נסיעות קבועות בצוות">
+          <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+            הצטרפות פעם אחת רושמת אותך לכל הנסיעות של הנהג בימים האלה, כולל
+            כאלה שעוד לא פורסמו. אפשר לבטל בכל רגע, וגם לבטל נסיעה בודדת.
+          </p>
+          {joinableTemplates.map((t) => {
+            const driver = memberById(t.driver_id);
+            const on = subscribedIds.has(t.id);
+            return (
+              <Card key={t.id} className="mb-2" edge={on ? "ok" : "muted"}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {t.days_of_week.map((d) => dayName(d).slice(0, 3)).join(", ")} ·{" "}
+                      <span className="num">{shortTime(t.depart_time)}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {driver?.name} · {t.direction === "to_work" ? "לעבודה" : "מהעבודה"}
+                      {t.price > 0 && ` · ${money(t.price)} לנסיעה`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {on && <Chip tone="ok">רשום</Chip>}
+                    <Button size="sm" variant={on ? "outline" : "default"}
+                      onClick={() => void run(
+                        () => on
+                          ? api.unsubscribeFromTemplate(t.id, me.id)
+                          : api.subscribeToTemplate(me.org_id, t.id, me.id),
+                        on ? "המנוי בוטל" : "נרשמת לנסיעה הקבועה",
+                      )}>
+                      {on ? "ביטול המנוי" : "הצטרפות קבועה"}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </Section>
+      )}
 
       {/* ---------- הוספה ידנית ---------- */}
       <Section title="נסעת בלי להירשם מראש?">

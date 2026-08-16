@@ -21,7 +21,7 @@ function applyTheme(theme: Theme) {
 }
 
 export default function Settings() {
-  const { me, org, contactOf, run, signOut } = useApp();
+  const { me, org, contactOf, run, signOut, ask } = useApp();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [payNote, setPayNote] = useState("");
@@ -210,7 +210,15 @@ export default function Settings() {
 
       <Section title="">
         <Button variant="outline" className="w-full text-[hsl(var(--danger))]"
-          onClick={() => { if (confirm("לצאת מהכלי?")) void signOut(); }}>
+          onClick={() => void (async () => {
+            const r = await ask({
+              title: "יציאה מהכלי",
+              body: "הנתונים נשמרים. בכניסה הבאה הכול יהיה במקומו.",
+              confirmLabel: "יציאה",
+              danger: true,
+            });
+            if (r.ok) void signOut();
+          })()}>
           יציאה
         </Button>
       </Section>

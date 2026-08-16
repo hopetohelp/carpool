@@ -376,6 +376,46 @@ export const deactivateTemplate = async (id: string) => {
   return ok(null);
 };
 
+/** מקבילה להדגמה: משנה את התבנית, ומיישר איתה את הנסיעות העתידיות שממנה */
+export const updateTemplate = async (
+  templateId: string,
+  patch: {
+    days?: number[]; time?: string; seats?: number; price?: number;
+    stopId?: string | null; dest?: string | null; autoApprove?: boolean;
+  },
+  applyToFuture = true,
+) => {
+  const t = state.templates.find((x) => x.id === templateId);
+  if (!t) return ok(0);
+  if (patch.days !== undefined) t.days_of_week = patch.days;
+  if (patch.time !== undefined) t.depart_time = patch.time;
+  if (patch.seats !== undefined) t.seats_total = patch.seats;
+  if (patch.price !== undefined) t.price = patch.price;
+  if (patch.stopId !== undefined) t.origin_stop_id = patch.stopId;
+  if (patch.dest !== undefined) t.dest_text = patch.dest;
+  if (patch.autoApprove !== undefined) t.auto_approve = patch.autoApprove;
+
+  let updated = 0;
+  if (applyToFuture) {
+    for (const r of state.rides) {
+      if (r.template_id !== templateId) continue;
+      if (new Date(r.departs_at).getTime() <= Date.now()) continue;
+      if (!["open", "full"].includes(r.status)) continue;
+      const dow = new Date(r.ride_date).getDay();
+      if (!t.days_of_week.includes(dow)) { r.status = "cancelled"; continue; }
+      r.depart_time = t.depart_time;
+      r.seats_total = Math.max(t.seats_total, r.seats_taken);
+      r.price = t.price;
+      r.origin_stop_id = t.origin_stop_id;
+      r.dest_text = t.dest_text;
+      r.auto_approve = t.auto_approve;
+      updated++;
+    }
+  }
+  save();
+  return ok(updated);
+};
+
 export const subscribeToTemplate = async (
   _orgId: string, templateId: string, memberId: string, _stopId?: string | null,
 ) => {

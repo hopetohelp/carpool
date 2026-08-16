@@ -124,11 +124,12 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   block?: boolean;
 };
 
-export function Button({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   variant = "primary", size = "md", loading, icon, block, className, children, disabled, ...props
-}: ButtonProps) {
+}, ref) {
   return (
     <button
+      ref={ref}
       {...props}
       disabled={disabled || loading}
       className={cn(
@@ -152,7 +153,7 @@ export function Button({
       {children}
     </button>
   );
-}
+});
 
 export function Money({ amount, tone }: { amount: number; tone?: "ok" | "warn" | "danger" }) {
   const color =

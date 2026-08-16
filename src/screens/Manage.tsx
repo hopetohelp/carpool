@@ -15,7 +15,7 @@ type Tab = "dashboard" | "members" | "policy" | "stops";
 
 export default function Manage() {
   const {
-    me, org, members, rides, bookings, balances, stops, run,
+    me, org, members, rides, bookings, balances, stops, run, ask,
   } = useApp();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [stopName, setStopName] = useState("");
@@ -152,13 +152,20 @@ export default function Manage() {
                 במקום עשרות העברות קטנות, סכום אחד.
               </p>
               <Button size="sm"
-                onClick={() => {
+                onClick={() => void (async () => {
                   const start = isoDate(lastMonthStart);
                   const end = isoDate(lastMonthEnd);
-                  if (confirm(`לסגור את התקופה ${shortDate(start)}–${shortDate(end)}?`)) {
+                  const r = await ask({
+                    title: `סגירת ${shortDate(start)}–${shortDate(end)}`,
+                    body: `כל החיובים בתקופה ירוכזו לדף חשבון אחד לכל זוג, וכל מי
+                           שחייב יקבל התראה עם הסכום. אפשר להריץ שוב — סגירה חוזרת
+                           של אותה תקופה מעדכנת את דפי החשבון במקום לכפול אותם.`,
+                    confirmLabel: "סגירת החודש",
+                  });
+                  if (r.ok) {
                     void run(() => api.closeMonth(start, end), "החודש נסגר ודפי החשבון נשלחו");
                   }
-                }}>
+                })()}>
                 סגירת החודש הקודם
               </Button>
             </Card>
@@ -355,11 +362,15 @@ export default function Manage() {
                     </div>
                     <button
                       className="text-xs text-[hsl(var(--danger))] hover:underline shrink-0"
-                      onClick={() => {
-                        if (confirm(`למחוק את "${st.name}"?`)) {
-                          void run(() => api.deleteStop(st.id), "הנקודה נמחקה");
-                        }
-                      }}>
+                      onClick={() => void (async () => {
+                        const r = await ask({
+                          title: `מחיקת ${st.name}`,
+                          body: "נסיעות שכבר משתמשות בנקודה יישארו איתה. היא רק לא תוצע יותר.",
+                          confirmLabel: "מחיקה",
+                          danger: true,
+                        });
+                        if (r.ok) void run(() => api.deleteStop(st.id), "הנקודה נמחקה");
+                      })()}>
                       מחיקה
                     </button>
                   </div>

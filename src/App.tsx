@@ -7,6 +7,7 @@ import { signOut as signOutNow } from "./lib/auth";
 import { IS_DEMO } from "./lib/supabase";
 import { resetDemo } from "./lib/api";
 import { Spinner } from "./components/app/ui";
+import { Dialog } from "./components/app/Dialog";
 import Login from "./screens/Login";
 import JoinOrg from "./screens/JoinOrg";
 import AwaitingApproval from "./screens/AwaitingApproval";
@@ -299,10 +300,17 @@ function Router() {
   );
 }
 
+/** חלון האישור יושב מעל כל המסכים, כדי שכל מסך יוכל לפתוח אותו בלי לארח אותו */
+function AppDialog() {
+  const { dialog, closeDialog } = useApp();
+  return <Dialog options={dialog} onClose={closeDialog} />;
+}
+
 export default function App() {
   return (
     <AppProvider>
       <Toast />
+      <AppDialog />
       <Router />
     </AppProvider>
   );

@@ -11,6 +11,7 @@ import type {
   Org, Payment, Ride, RideTemplate, Stop,
 } from "./lib/types";
 import { addDays, isoDate, startOfWeek } from "./lib/format";
+import type { AskOptions, AskResult } from "./components/app/Dialog";
 
 // ============================================================================
 // מצב האפליקציה במקום אחד.
@@ -59,6 +60,13 @@ interface Store extends State {
   toast: { text: string; kind: "ok" | "error" } | null;
   clearToast: () => void;
   signOut: () => Promise<void>;
+  /**
+   * חלון אישור פנימי, במקום confirm ו-prompt של הדפדפן.
+   * מחזיר הבטחה כדי שהקריאה תישאר קצרה כמו confirm ולא יהיה פיתוי לחזור אליו.
+   */
+  ask: (options: AskOptions) => Promise<AskResult>;
+  dialog: AskOptions | null;
+  closeDialog: (result: AskResult) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -77,6 +85,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cleanupRef = useRef<(() => void)[]>([]);
   /** ספירת הכניסה נעשית פעם אחת לכל פתיחה של הדף, לא בכל רענון נתונים */
   const loginCounted = useRef(false);
+  const [dialog, setDialog] = useState<AskOptions | null>(null);
+  const dialogResolve = useRef<((r: AskResult) => void) | null>(null);
 
   const loadAll = useCallback(async () => {
     // שלושה מצבים נפרדים: אין חשבון · יש חשבון בלי ארגון · הכל מוכן.
@@ -208,6 +218,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.me?.id, state.org?.id]);
 
+  const ask = useCallback((options: AskOptions) => {
+    // אם כבר פתוח חלון קודם, סוגרים אותו כביטול כדי שלא יישאר תלוי לנצח
+    dialogResolve.current?.({ ok: false, value: "" });
+    setDialog(options);
+    return new Promise<AskResult>((resolve) => { dialogResolve.current = resolve; });
+  }, []);
+
+  const closeDialog = useCallback((result: AskResult) => {
+    setDialog(null);
+    dialogResolve.current?.(result);
+    dialogResolve.current = null;
+  }, []);
+
   const value = useMemo<Store>(() => {
     const memberMap = new Map(state.members.map((m) => [m.id, m]));
     const contactMap = new Map(state.contacts.map((c) => [c.member_id, c]));
@@ -228,6 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ),
       refresh, refreshMoney, run,
       toast,
+      ask, dialog, closeDialog,
       clearToast: () => setToast(null),
       signOut: async () => {
         if (IS_DEMO) { window.location.href = window.location.pathname; return; }
@@ -235,7 +259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState({ ...EMPTY, ready: true, authed: false, signedIn: false });
       },
     };
-  }, [state, toast, refresh, refreshMoney, run]);
+  }, [state, toast, refresh, refreshMoney, run, ask, dialog, closeDialog]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

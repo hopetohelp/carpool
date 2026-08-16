@@ -101,4 +101,7 @@ export const onRideActivity: typeof live.onRideActivity = (...a: Parameters<type
 export const updateOrgSettings: typeof live.updateOrgSettings = (...a: Parameters<typeof live.updateOrgSettings>) =>
   (impl.updateOrgSettings as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.updateOrgSettings>;
 
+export const updateTemplate: typeof live.updateTemplate = (...a: Parameters<typeof live.updateTemplate>) =>
+  (impl.updateTemplate as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.updateTemplate>;
+
 export { resetDemo } from "./apiDemo";
