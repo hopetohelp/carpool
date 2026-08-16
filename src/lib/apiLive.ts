@@ -289,3 +289,29 @@ export function onRideActivity(orgId: string, cb: () => void) {
 
 export const updateOrgSettings = async (orgId: string, settings: Record<string, unknown>) =>
   unwrap(await supabase.from("orgs").update({ settings }).eq("id", orgId).select().single());
+
+// ---------- עדכון נסיעה קבועה ----------
+
+/**
+ * משנה תבנית של נסיעה קבועה, ובברירת מחדל מיישר גם את הנסיעות העתידיות
+ * שכבר פורסמו ממנה. בלי היישור נשאר לוח שמערבב שתי שעות של אותה נסיעה.
+ */
+export const updateTemplate = (
+  templateId: string,
+  patch: {
+    days?: number[]; time?: string; seats?: number; price?: number;
+    stopId?: string | null; dest?: string | null; autoApprove?: boolean;
+  },
+  applyToFuture = true,
+) =>
+  rpc<number>("update_template", {
+    p_template: templateId,
+    p_days: patch.days ?? null,
+    p_time: patch.time ?? null,
+    p_seats: patch.seats ?? null,
+    p_price: patch.price ?? null,
+    p_stop: patch.stopId ?? null,
+    p_dest: patch.dest ?? null,
+    p_auto: patch.autoApprove ?? null,
+    p_apply_future: applyToFuture,
+  });

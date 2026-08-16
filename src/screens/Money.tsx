@@ -1,11 +1,11 @@
 import { CheckCircle } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/store";
 import { Card, Chip, Empty, Field, Money as Amount, Section } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as api from "@/lib/api";
-import type { PaymentMethod } from "@/lib/types";
+import type { PaymentMethod, Settlement } from "@/lib/types";
 import { paymentMethodLabel, paymentStatusLabel, shortDate } from "@/lib/format";
 import { debtReminderMessage, whatsappLink } from "@/lib/share";
 
@@ -16,12 +16,19 @@ import { debtReminderMessage, whatsappLink } from "@/lib/share";
 
 export default function Money() {
   const {
-    me, balances, payments, charges, memberById, contactOf, run,
+    me, balances, payments, charges, memberById, contactOf, run, ask,
   } = useApp();
   const [payTo, setPayTo] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("bit");
   const [reference, setReference] = useState("");
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+
+  useEffect(() => {
+    // נטען כאן ולא בחנות: זה נתון שנקרא במסך אחד בלבד, ואין סיבה למשוך
+    // אותו בכל פתיחה של הכלי
+    void api.listSettlements().then(setSettlements).catch(() => setSettlements([]));
+  }, []);
 
   if (!me) return null;
 
@@ -76,10 +83,20 @@ export default function Money() {
                   קיבלתי
                 </Button>
                 <Button size="sm" variant="outline"
-                  onClick={() => {
-                    const reason = prompt("למה התשלום לא התקבל? (יישלח לנוסע)");
-                    if (reason) void run(() => api.disputePayment(p.id, reason), "סומן במחלוקת");
-                  }}>
+                  onClick={() => void (async () => {
+                    const r = await ask({
+                      title: "התשלום לא התקבל",
+                      body: "החוב יישאר פתוח והנוסע יקבל את מה שתכתוב כאן.",
+                      confirmLabel: "סימון במחלוקת",
+                      input: {
+                        label: "מה קרה",
+                        hint: "יישלח לנוסע. חובה, כדי שיהיה מה לברר.",
+                        placeholder: "לא הגיעה העברה",
+                        required: true,
+                      },
+                    });
+                    if (r.ok) void run(() => api.disputePayment(p.id, r.value), "סומן במחלוקת");
+                  })()}>
                   לא קיבלתי
                 </Button>
               </div>
@@ -254,6 +271,35 @@ export default function Money() {
           </div>
         )}
       </Section>
+
+      {/* ---------- דפי חשבון חודשיים ---------- */}
+      {/* סגירת חודש יצרה דף חשבון ושלחה התראה עם הסכום — ולא היה מסך שמציג
+          אותו. ברגע שההתראה נקראה, הסיכום נעלם ולא היה לאן לחזור. */}
+      {settlements.length > 0 && (
+        <Section title="דפי חשבון חודשיים">
+          <div className="card-surface divide-y divide-border">
+            {settlements.map((s) => {
+              const iPay = s.payer_id === me.id;
+              const other = memberById(iPay ? s.payee_id : s.payer_id);
+              return (
+                <div key={s.id} className="p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {iPay ? `ל${other?.name}` : `מ${other?.name}`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="num">{shortDate(s.period_start)}</span>–
+                      <span className="num">{shortDate(s.period_end)}</span>
+                      {" · "}<span className="num">{s.rides_count}</span> נסיעות
+                    </p>
+                  </div>
+                  <Amount amount={s.amount} tone={iPay ? "warn" : undefined} />
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
     </>
   );
 }

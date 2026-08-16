@@ -2,9 +2,11 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/store";
 import { go } from "@/App";
-import { Card, Chip, Money, Section, Empty } from "@/components/app/ui";
+import { Card, Chip, Money, Section, Empty, Field } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import * as api from "@/lib/api";
+import type { Ride } from "@/lib/types";
 import {
   friendlyDate, shortTime, directionLabel, bookingStatusLabel,
   rideStatusLabel, untilDeparture,
@@ -13,12 +15,114 @@ import {
   downloadIcs, googleCalendarLink, navigationLink, rideMessage, whatsappLink,
 } from "@/lib/share";
 
+/**
+ * עריכת נסיעה שכבר פורסמה.
+ *
+ * עד עכשיו הדרך היחידה לשנות פרט הייתה לבטל את הנסיעה כולה ולפרסם מחדש —
+ * פעולה שמשחררת את כל הנוסעים ומאבדת אותם, בשביל שינוי של חמש דקות. המסד
+ * תמך בעריכה מלכתחילה; מה שהיה חסר זה המסך, וההתראה שמלווה אותה כדי
+ * שהשינוי לא יקרה בשקט.
+ */
+function RideEditForm({ ride, onDone }: { ride: Ride; onDone: () => void }) {
+  const { stops, run, bookingsOf } = useApp();
+  const [date, setDate] = useState(ride.ride_date);
+  const [time, setTime] = useState(ride.depart_time.slice(0, 5));
+  const [seats, setSeats] = useState(String(ride.seats_total));
+  const [price, setPrice] = useState(String(ride.price));
+  const [stopId, setStopId] = useState(ride.origin_stop_id ?? "");
+  const [originText, setOriginText] = useState(ride.origin_text ?? "");
+  const [dest, setDest] = useState(ride.dest_text ?? "");
+  const [notes, setNotes] = useState(ride.notes ?? "");
+
+  const taken = bookingsOf(ride.id).filter((b) =>
+    ["approved", "rode"].includes(b.status)).length;
+  const seatsTooLow = Number(seats) < taken;
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+        הנוסעים הרשומים יקבלו התראה עם מה שהשתנה. ההרשמות שלהם נשמרות.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="תאריך">
+          <Input type="date" value={date} dir="ltr"
+            onChange={(e) => setDate(e.target.value)} />
+        </Field>
+        <Field label="שעת יציאה">
+          <Input type="time" value={time} dir="ltr"
+            onChange={(e) => setTime(e.target.value)} />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="מקומות"
+          error={seatsTooLow ? `כבר רשומים ${taken} נוסעים` : null}>
+          <Input type="number" min="1" max="8" value={seats} dir="ltr"
+            onChange={(e) => setSeats(e.target.value)} />
+        </Field>
+        <Field label="מחיר לנוסע">
+          <Input type="number" min="0" step="0.5" value={price} dir="ltr"
+            onChange={(e) => setPrice(e.target.value)} />
+        </Field>
+      </div>
+
+      {stops.length > 0 && (
+        <Field label="נקודת יציאה">
+          <select value={stopId} onChange={(e) => setStopId(e.target.value)}
+            className="w-full h-10 rounded-[var(--radius)] border border-input bg-card px-3">
+            <option value="">בלי נקודה קבועה</option>
+            {stops.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+      )}
+
+      {!stopId && (
+        <Field label="מאיפה יוצאים" hint="טקסט חופשי — למשל צומת או כתובת">
+          <Input value={originText} onChange={(e) => setOriginText(e.target.value)}
+            placeholder="הכניסה לשכונה" />
+        </Field>
+      )}
+
+      <Field label="יעד" hint="לא חובה">
+        <Input value={dest} onChange={(e) => setDest(e.target.value)} placeholder="המשרד" />
+      </Field>
+
+      <Field label="הערה לנוסעים" hint="לא חובה">
+        <Input value={notes} onChange={(e) => setNotes(e.target.value)}
+          placeholder="יוצא בדיוק בזמן" />
+      </Field>
+
+      <div className="flex gap-2">
+        <Button size="sm" disabled={seatsTooLow}
+          onClick={() => void run(
+            () => api.updateRide(ride.id, {
+              ride_date: date,
+              depart_time: time,
+              seats_total: Number(seats) || ride.seats_total,
+              price: Number(price) || 0,
+              origin_stop_id: stopId || null,
+              origin_text: stopId ? null : (originText.trim() || null),
+              dest_text: dest.trim() || null,
+              notes: notes.trim() || null,
+            }),
+            "הנסיעה עודכנה והנוסעים קיבלו הודעה",
+          ).then(onDone)}>
+          שמירת השינויים
+        </Button>
+        <Button size="sm" variant="outline" onClick={onDone}>ביטול</Button>
+      </div>
+    </div>
+  );
+}
+
 export default function RideDetail({ rideId }: { rideId: string }) {
   const {
-    me, org, rides, memberById, contactOf, stopById, stops, bookingsOf, myBookingFor, run,
+    me, org, rides, memberById, contactOf, stopById, stops, bookingsOf, myBookingFor, run, ask,
   } = useApp();
   const [pickupStop, setPickupStop] = useState<string>("");
   const [closing, setClosing] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [attended, setAttended] = useState<Set<string>>(new Set());
 
   const ride = rides.find((r) => r.id === rideId);
@@ -190,15 +294,21 @@ export default function RideDetail({ rideId }: { rideId: string }) {
               )}
               <Button size="sm" variant="outline"
                 className="text-[hsl(var(--danger))] border-[hsl(var(--danger))]"
-                onClick={() => {
+                onClick={() => void (async () => {
                   const hours = org.settings?.cancel_deadline_hours ?? 3;
                   const late =
                     new Date(ride.departs_at).getTime() - hours * 3600_000 < Date.now();
-                  const msg = late
-                    ? `ביטול פחות מ-${hours} שעות לפני הנסיעה. לפי מדיניות הארגון החיוב יישאר בתוקף. לבטל בכל זאת?`
-                    : "לבטל את ההרשמה לנסיעה?";
-                  if (confirm(msg)) void run(() => api.cancelBooking(mine.id), "ההרשמה בוטלה");
-                }}>
+                  const r = await ask({
+                    title: "ביטול ההרשמה לנסיעה",
+                    body: late
+                      ? `נותרו פחות מ-${hours} שעות ליציאה. לפי מדיניות הארגון החיוב יישאר בתוקף גם אחרי הביטול.`
+                      : "המקום יתפנה לנוסע אחר, ולא ייווצר חיוב.",
+                    confirmLabel: "ביטול ההרשמה",
+                    cancelLabel: "השארה",
+                    danger: true,
+                  });
+                  if (r.ok) void run(() => api.cancelBooking(mine.id), "ההרשמה בוטלה");
+                })()}>
                 ביטול ההרשמה
               </Button>
             </div>
@@ -227,10 +337,24 @@ export default function RideDetail({ rideId }: { rideId: string }) {
                       אישור
                     </Button>
                     <Button size="sm" variant="outline"
-                      onClick={() => {
-                        const reason = prompt("סיבה לדחייה (לא חובה, תישלח לנוסע):") ?? undefined;
-                        void run(() => api.decideBooking(b.id, false, reason), "הבקשה נדחתה");
-                      }}>
+                      onClick={() => void (async () => {
+                        const r = await ask({
+                          title: `דחיית הבקשה של ${p?.name}`,
+                          confirmLabel: "דחייה",
+                          danger: true,
+                          input: {
+                            label: "סיבה",
+                            hint: "לא חובה. מה שתכתוב יישלח לנוסע.",
+                            placeholder: "הרכב מלא",
+                          },
+                        });
+                        if (r.ok) {
+                          void run(
+                            () => api.decideBooking(b.id, false, r.value || undefined),
+                            "הבקשה נדחתה",
+                          );
+                        }
+                      })()}>
                       דחייה
                     </Button>
                   </div>
@@ -298,8 +422,13 @@ export default function RideDetail({ rideId }: { rideId: string }) {
                 onClick={() => downloadIcs(ride, driver, stop)}>הוספה ליומן</Button>
             </div>
 
-            {!closing ? (
+            {editing ? (
+              <RideEditForm ride={ride} onDone={() => setEditing(false)} />
+            ) : !closing ? (
               <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                  עריכת פרטי הנסיעה
+                </Button>
                 <Button size="sm" onClick={() => {
                   setAttended(new Set(approved.map((b) => b.passenger_id)));
                   setClosing(true);
@@ -308,12 +437,26 @@ export default function RideDetail({ rideId }: { rideId: string }) {
                 </Button>
                 <Button size="sm" variant="outline"
                   className="text-[hsl(var(--danger))] border-[hsl(var(--danger))]"
-                  onClick={() => {
-                    const reason = prompt("סיבת הביטול (תישלח לכל הנוסעים):") ?? undefined;
-                    if (reason !== undefined && confirm("לבטל את הנסיעה כולה?")) {
-                      void run(() => api.cancelRide(ride.id, reason), "הנסיעה בוטלה");
+                  onClick={() => void (async () => {
+                    const r = await ask({
+                      title: "ביטול הנסיעה",
+                      body: approved.length > 0
+                        ? `${approved.length} נוסעים רשומים לנסיעה ויקבלו הודעה שהיא בוטלה.
+                           אם רק צריך לשנות שעה או פרטים — עדיף לערוך במקום לבטל.`
+                        : "אין נוסעים רשומים. הנסיעה תיעלם מהלוח.",
+                      confirmLabel: "ביטול הנסיעה",
+                      cancelLabel: "חזרה",
+                      danger: true,
+                      input: {
+                        label: "סיבה",
+                        hint: "לא חובה. תישלח לכל הנוסעים.",
+                        placeholder: "הרכב במוסך",
+                      },
+                    });
+                    if (r.ok) {
+                      void run(() => api.cancelRide(ride.id, r.value || undefined), "הנסיעה בוטלה");
                     }
-                  }}>
+                  })()}>
                   ביטול הנסיעה
                 </Button>
               </div>
