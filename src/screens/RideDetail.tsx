@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import * as api from "@/lib/api";
 import type { Ride } from "@/lib/types";
 import {
-  friendlyDate, shortTime, directionLabel, bookingStatusLabel,
-  rideStatusLabel, untilDeparture,
+  friendlyDate, shortTime, bookingStatusLabel,
+  rideStatusLabel, untilDeparture, dayName, hebrewDate,
 } from "@/lib/format";
 import {
   downloadIcs, googleCalendarLink, navigationLink, rideMessage, whatsappLink,
@@ -118,7 +118,8 @@ function RideEditForm({ ride, onDone }: { ride: Ride; onDone: () => void }) {
 
 export default function RideDetail({ rideId }: { rideId: string }) {
   const {
-    me, org, rides, memberById, contactOf, stopById, stops, bookingsOf, myBookingFor, run, ask,
+    me, org, rides, memberById, contactOf, stopById, stops, bookingsOf, myBookingFor,
+    subscriptions, run, ask,
   } = useApp();
   const [pickupStop, setPickupStop] = useState<string>("");
   const [closing, setClosing] = useState(false);
@@ -151,6 +152,8 @@ export default function RideDetail({ rideId }: { rideId: string }) {
   const waitlist = bookings.filter((b) => b.status === "waitlisted");
 
   const navLink = navigationLink(stop ?? ride.origin_text);
+  const subscribedHere =
+    !!ride.template_id && subscriptions.some((s) => s.template_id === ride.template_id);
 
   function toggleAttended(id: string) {
     setAttended((prev) => {
@@ -168,17 +171,20 @@ export default function RideDetail({ rideId }: { rideId: string }) {
       </button>
 
       {/* ---------- ראש הנסיעה ---------- */}
-      <Card edge={ride.status === "cancelled" ? "danger" : iAmDriver || mine ? "ok" : "muted"}
-        className="mb-4">
+      {/* הכיוון הוא צורת הכרטיס — חוד לכיוון הנסיעה — ולכן המילים «לעבודה»
+          ירדו מכאן. אותו נתון לא נאמר פעמיים */}
+      <Card className={`mb-4 ps-6 pe-4 dir ${
+        ride.direction === "to_work" ? "dir-out" : "dir-back"} ${
+        ride.status === "cancelled" ? "dir-off" : iAmDriver || mine ? "dir-mine" : ""}`}>
         <div className="flex items-start justify-between gap-3 mb-2">
           <div>
             <h1 className="text-xl font-bold">
               {friendlyDate(ride.ride_date)},{" "}
               <span className="num">{shortTime(ride.depart_time)}</span>
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {directionLabel(ride.direction)}
-              {iAmDriver ? " · אתה הנהג" : ` · ${driver?.name}`}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {hebrewDate(ride.ride_date)}
+              {" · "}{iAmDriver ? "אתה הנהג" : driver?.name}
             </p>
           </div>
           <div className="text-left shrink-0">
@@ -291,6 +297,24 @@ export default function RideDetail({ rideId }: { rideId: string }) {
                     </Button>
                   )}
                 </>
+              )}
+              {/* רישום קבוע מתוך הנסיעה עצמה — הרגע שבו הנוסע מגלה שהוא
+                  רוצה להיות כאן כל שבוע הוא כשהוא כבר בפנים */}
+              {mine.status === "approved" && ride.template_id && (
+                subscribedHere ? (
+                  <Button size="sm" variant="outline"
+                    onClick={() => void run(
+                      () => api.unsubscribeFromRide(ride.id), "הרישום הקבוע בוטל")}>
+                    ביטול הרישום הקבוע
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline"
+                    onClick={() => void run(
+                      () => api.subscribeToRide(ride.id),
+                      "נרשמת לכל הנסיעות בסדרה הזו")}>
+                    רישום לכל הסדרה
+                  </Button>
+                )
               )}
               <Button size="sm" variant="outline"
                 className="text-[hsl(var(--danger))] border-[hsl(var(--danger))]"
@@ -429,6 +453,29 @@ export default function RideDetail({ rideId }: { rideId: string }) {
                 <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
                   עריכת פרטי הנסיעה
                 </Button>
+                {/* ההחלטה «זה קבוע אצלי» מגיעה כמעט תמיד אחרי הנסיעה הראשונה,
+                    ולכן היא כאן ולא רק בטופס נפרד לפני שיש נסיעה בכלל.
+                    היום בשבוע נלקח מהנסיעה עצמה; הוספת ימים נעשית בעריכת
+                    הנסיעה הקבועה, ואין טעם לשכפל לכאן בורר ימים שני. */}
+                {!ride.template_id && (
+                  <Button size="sm" variant="outline"
+                    onClick={() => void (async () => {
+                      const r = await ask({
+                        title: "להפוך לנסיעה קבועה",
+                        body: `הנסיעה תחזור בכל יום ${dayName(new Date(ride.ride_date).getDay())}
+                               באותה שעה, ותתפרסם לחודש קדימה מעצמה. נוסעים יוכלו
+                               להירשם אליה פעם אחת במקום בכל שבוע מחדש.
+                               הוספת ימים נוספים — במרחב שלך.`,
+                        confirmLabel: "הפיכה לקבועה",
+                      });
+                      if (r.ok) {
+                        void run(() => api.rideToTemplate(ride.id),
+                          "הנסיעה הפכה לקבועה ותתפרסם מעצמה");
+                      }
+                    })()}>
+                    להפוך לקבועה
+                  </Button>
+                )}
                 <Button size="sm" onClick={() => {
                   setAttended(new Set(approved.map((b) => b.passenger_id)));
                   setClosing(true);

@@ -217,6 +217,24 @@
   }
 }
 
+/* ---------- כיוון הנסיעה כצורה, לא כטקסט ----------
+   כרטיס נסיעה הציג את הכיוון פעמיים: גם כאייקון חץ וגם כמילים «לעבודה».
+   עכשיו הכיוון הוא צורת הכרטיס עצמו — חוד בצד שאליו נוסעים — והטקסט ירד.
+   הלוך מצביע שמאלה, חזור מצביע ימינה, וההבדל נקרא במבט אחד בלי לקרוא מילה. */
+.dir { position: relative; }
+.dir::before {
+  content: "";
+  position: absolute;
+  top: 10px; bottom: 10px;
+  width: 11px;
+  background: hsl(var(--primary) / 0.55);
+}
+.dir-out::before  { left: 6px;  clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+.dir-back::before { right: 6px; clip-path: polygon(0 0, 0 100%, 100% 50%); }
+/* נסיעה שאני בה — החוד מלא, וזה גם הסימן שאני רשום */
+.dir-mine::before { background: hsl(var(--primary)); }
+.dir-off::before  { background: hsl(var(--border)); }
+
 /* מרווח לסרגל הניווט התחתון — רק במסכים שבהם הוא באמת מוצג.
    במסכי הכניסה אין סרגל, ומרווח קבוע היה יוצר שם שטח ריק מיותר.
 

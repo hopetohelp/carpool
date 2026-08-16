@@ -6,7 +6,7 @@ import { Card, Chip, Empty, Section } from "@/components/app/ui";
 import { RideCard } from "@/components/app/RideCard";
 import { Button } from "@/components/ui/button";
 import {
-  addDays, dayShort, isoDate, shortDate, shortTime, startOfWeek, friendlyDate,
+  addDays, dayShort, isoDate, shortDate, shortTime, startOfWeek, friendlyDate, hebrewDate,
 } from "@/lib/format";
 
 // ============================================================================
@@ -131,7 +131,8 @@ export default function Board() {
             .sort((a, b) => a.depart_time.localeCompare(b.depart_time));
           if (!dayRides.length) return null;
           return (
-            <Section key={isoDate(d)} title={friendlyDate(isoDate(d))}>
+            <Section key={isoDate(d)}
+              title={`${friendlyDate(isoDate(d))} · ${hebrewDate(isoDate(d))}`}>
               {dayRides.map((r) => <RideCard key={r.id} ride={r} showDate={false} />)}
             </Section>
           );
