@@ -10,7 +10,8 @@ import { Spinner } from "./components/app/ui";
 import Login from "./screens/Login";
 import JoinOrg from "./screens/JoinOrg";
 import AwaitingApproval from "./screens/AwaitingApproval";
-import OrgRequests from "./screens/OrgRequests";
+import Admin from "./screens/Admin";
+import Suspended from "./screens/Suspended";
 import Home from "./screens/Home";
 import Board from "./screens/Board";
 import RideDetail from "./screens/RideDetail";
@@ -186,9 +187,35 @@ function DemoBanner() {
   );
 }
 
+/**
+ * מסך לכל מי שהגיע לכתובת של מנהל המערכת בלי ההרשאה.
+ *
+ * זו הודעה בלבד ולא ההגנה עצמה: ההגנה יושבת במסד הנתונים, שם כל פונקציה
+ * של מנהל מערכת בודקת בעצמה מי קורא לה. גם מי שיעקוף את המסך הזה לגמרי
+ * לא יקבל שורה אחת של נתונים.
+ */
+function NoAccess() {
+  return (
+    <div className="card-surface p-6 text-center shadow-[var(--shadow-2)]">
+      <div className="mx-auto mb-4 h-12 w-12 grid place-items-center rounded-full
+                      bg-secondary text-muted-foreground">
+        <ShieldCheck size={24} />
+      </div>
+      <h1 className="text-xl font-bold">האזור הזה סגור</h1>
+      <p className="text-muted-foreground mt-2 leading-relaxed">
+        מסך ניהול המערכת פתוח רק למי שמתפעל את המערכת.
+      </p>
+      <button onClick={() => go("/")}
+        className="mt-5 text-sm text-muted-foreground hover:underline">
+        חזרה לדף הבית
+      </button>
+    </div>
+  );
+}
+
 function Router() {
   const route = useRoute();
-  const { ready, authed, signedIn, me, error, refresh, isPlatformAdmin } = useApp();
+  const { ready, authed, signedIn, me, error, refresh, isPlatformAdmin, blocked } = useApp();
 
   if (!ready) return <Spinner label="טוען…" />;
 
@@ -203,13 +230,27 @@ function Router() {
 
   if (!authed) return <Login onDone={() => void refresh()} />;
 
-  // מנהל מערכת מגיע למסך הבקשות בכל מצב, גם אם הוא עצמו לא חבר בשום ארגון
-  if (isPlatformAdmin && route === "/admin") {
+  // מנהל מערכת מגיע למסך הניהול בכל מצב, גם אם הוא עצמו לא חבר בשום ארגון.
+  // מי שאינו מנהל מערכת מקבל הודעה מפורשת ולא מסך ריק, כדי שלא ייראה כאילו
+  // משהו נשבר — וגם כדי שלא יישאר ספק שהאזור סגור ולא סתם לא נטען.
+  if (route.startsWith("/admin")) {
     return (
       <>
         <Header />
-        <main className="screen py-5 pad-nav"><OrgRequests /></main>
+        <main className="screen pt-5 pad-nav">
+          {isPlatformAdmin ? <Admin /> : <NoAccess />}
+        </main>
         {signedIn && me?.status === "active" && <BottomNav route={route} />}
+      </>
+    );
+  }
+
+  // חשבון או ארגון שהושהו בידי מנהל מערכת
+  if (blocked) {
+    return (
+      <>
+        <Header />
+        <main className="screen py-6"><Suspended kind={blocked} /></main>
       </>
     );
   }
@@ -242,7 +283,7 @@ function Router() {
     <>
       <DemoBanner />
       <Header />
-      <main className="screen py-5 pad-nav">
+      <main className="screen pt-5 pad-nav">
         {route === "/" && <Home />}
         {route === "/board" && <Board />}
         {route === "/mine" && <MyRides />}

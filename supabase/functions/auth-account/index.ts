@@ -151,6 +151,52 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
+  // ---------- מחיקת חשבון כניסה, בידי מנהל מערכת ----------
+  // המסד כבר מחק את כל מה שהמשתמש עשה בכלי; כאן נמחק חשבון הכניסה עצמו,
+  // כי רק לפונקציית שרת יש הרשאה לגעת בשירות האימות.
+  //
+  // מי הקורא נקבע מהאסימון שלו ומהמסד בלבד, ולא מהגוף של הבקשה — אחרת כל
+  // אחד היה יכול להצהיר שהוא מנהל מערכת ולמחוק חשבונות.
+  if (action === "admin_delete_auth_user") {
+    const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (!token) return json({ error: "צריך להיות מחובר" }, 401);
+
+    const { data: caller } = await admin.auth.getUser(token);
+    const callerId = caller?.user?.id;
+    const callerEmail = (caller?.user?.email ?? "").toLowerCase();
+    if (!callerId) return json({ error: "צריך להיות מחובר" }, 401);
+
+    const isPlatformAdmin = async (id: string, mail: string) => {
+      const { data: byId } = await admin
+        .from("platform_admins").select("user_id").eq("user_id", id).maybeSingle();
+      if (byId) return true;
+      if (!mail) return false;
+      const { data: byEmail } = await admin.from("platform_admin_emails").select("email");
+      return (byEmail ?? []).some((r) => String(r.email).toLowerCase() === mail);
+    };
+
+    if (!await isPlatformAdmin(callerId, callerEmail)) {
+      return json({ error: "אין לך הרשאה" }, 403);
+    }
+
+    const target = String(body.user_id ?? "");
+    if (!target) return json({ error: "חסר מזהה חשבון" }, 400);
+    if (target === callerId) return json({ error: "אי אפשר למחוק את החשבון של עצמך" }, 400);
+
+    const { data: targetUser } = await admin.auth.admin.getUserById(target);
+    if (!targetUser?.user) return json({ ok: true });   // כבר נמחק
+    if (await isPlatformAdmin(target, (targetUser.user.email ?? "").toLowerCase())) {
+      return json({ error: "אי אפשר למחוק חשבון של מנהל מערכת" }, 400);
+    }
+
+    const { error } = await admin.auth.admin.deleteUser(target);
+    if (error) {
+      console.log(`admin delete user failed: ${error.message}`);
+      return json({ error: "לא הצלחנו למחוק את חשבון הכניסה" }, 400);
+    }
+    return json({ ok: true });
+  }
+
   // ---------- יצירת חשבון ----------
   if (action === "signup") {
     const password = String(body.password ?? "");

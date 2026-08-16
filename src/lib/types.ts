@@ -35,6 +35,8 @@ export interface Org {
   name: string;
   join_code: string;
   settings: OrgSettings;
+  /** הושהה בידי מנהל מערכת: הנתונים נשמרים, הגישה נעצרת עד שההשהיה תוסר */
+  suspended_at?: string | null;
 }
 
 export interface Member {

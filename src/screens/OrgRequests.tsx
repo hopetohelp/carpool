@@ -39,9 +39,6 @@ export default function OrgRequests() {
 
   return (
     <>
-      <button onClick={() => history.back()}
-        className="text-sm text-muted-foreground mb-3 hover:underline">› חזרה</button>
-
       <Section title="בקשות לפתיחת ארגון">
         {err && (
           <div role="alert"

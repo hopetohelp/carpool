@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { IS_DEMO, supabase } from "./lib/supabase";
 import * as api from "./lib/api";
 import { isPlatformAdmin } from "./lib/auth";
+import { accountStatus, recordLogin } from "./lib/admin";
 import type {
   AppNotification, Balance, Booking, Charge, Member, MemberContact,
   Org, Payment, Ride, RideTemplate, Stop,
@@ -26,6 +27,8 @@ interface State {
   accountEmail: string;
   /** מנהל מערכת: תפקיד מעל הארגונים, מאשר פתיחת ארגונים חדשים */
   isPlatformAdmin: boolean;
+  /** החשבון או הארגון הושהו בידי מנהל מערכת — הכלי נעצר ומוצג הסבר */
+  blocked: "user" | "org" | null;
   me: Member | null;
   org: Org | null;
   members: Member[];
@@ -62,7 +65,7 @@ const Ctx = createContext<Store | null>(null);
 
 const EMPTY: State = {
   ready: false, authed: false, signedIn: false, accountEmail: "",
-  isPlatformAdmin: false, me: null, org: null,
+  isPlatformAdmin: false, blocked: null, me: null, org: null,
   members: [], contacts: [], stops: [], rides: [], bookings: [],
   templates: [], balances: [], charges: [], payments: [],
   notifications: [], subscriptions: [], error: null,
@@ -72,6 +75,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(EMPTY);
   const [toast, setToast] = useState<Store["toast"]>(null);
   const cleanupRef = useRef<(() => void)[]>([]);
+  /** ספירת הכניסה נעשית פעם אחת לכל פתיחה של הדף, לא בכל רענון נתונים */
+  const loginCounted = useRef(false);
 
   const loadAll = useCallback(async () => {
     // שלושה מצבים נפרדים: אין חשבון · יש חשבון בלי ארגון · הכל מוכן.
@@ -86,7 +91,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       accountEmail = session.user.email ?? "";
-      platformAdmin = await isPlatformAdmin();
+      if (!loginCounted.current) {
+        loginCounted.current = true;
+        void recordLogin();
+      }
+
+      const [admin, status] = await Promise.all([isPlatformAdmin(), accountStatus()]);
+      platformAdmin = admin;
+
+      // חשבון או ארגון שהושהו: לא טוענים שום נתון, רק את מה שנחוץ להסבר.
+      // ממילא כל הטבלאות סגורות בפניהם — טעינה כאן הייתה מחזירה רשימות
+      // ריקות ומציגה כלי שנראה שבור במקום להסביר מה קרה.
+      if (status === "user_suspended" || status === "org_suspended") {
+        const who = await api.loadMe().catch(() => null);
+        setState({
+          ...EMPTY, ready: true, authed: true, signedIn: false, accountEmail,
+          isPlatformAdmin: platformAdmin,
+          blocked: status === "user_suspended" ? "user" : "org",
+          me: who?.member ?? null, org: who?.org ?? null,
+        });
+        return;
+      }
     }
 
     const identity = await api.loadMe();
@@ -116,7 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setState({
       ready: true, authed: true, signedIn: true, accountEmail,
-      isPlatformAdmin: platformAdmin, me: member, org,
+      isPlatformAdmin: platformAdmin, blocked: null, me: member, org,
       members, contacts, stops, rides, bookings, templates,
       balances, charges, payments, notifications,
       subscriptions: subs as { template_id: string }[],
