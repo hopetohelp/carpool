@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npm run lint && tsc -b --noEmit && npm run test:layout",
+    "test:layout": "node tests/ui/check-layout.mjs",
+    "test:db": "bash tests/db/run.sh",
+    "test:all": "npm test && npm run test:db"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
