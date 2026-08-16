@@ -1,0 +1,72 @@
+# ============================================================================
+# בדיקות אוטומטיות
+#
+# רצות בכל דחיפה ובכל בקשת מיזוג. שתי משימות שרצות במקביל: אחת על הקוד
+# ואחת על מסד הנתונים. הפירוט המלא: tests/README.md
+# ============================================================================
+name: בדיקות
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  code:
+    name: קוד, טיפוסים ופריסה
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: בדיקת סגנון
+        run: npm run lint
+
+      - name: בדיקת טיפוסים
+        run: npx tsc -b --noEmit
+
+      # ערכים מזויפים בכוונה. הכתובת האמיתית של מסד הנתונים לא נכתבת בריפו
+      # (ראו "כלל אנונימיות" ב-CLAUDE.md), והבנייה כאן נועדה רק לוודא
+      # שהקוד מתקמפל ושה-CSS יוצא נכון.
+      - name: בנייה
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+
+      - name: בדיקת פריסה
+        run: npm run test:layout
+
+  database:
+    name: הרשאות ולוגיקה במסד הנתונים
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: התקנת לקוח Postgres
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: הרצת חבילות הבדיקה
+        run: bash tests/db/run.sh
+        env:
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: postgres
