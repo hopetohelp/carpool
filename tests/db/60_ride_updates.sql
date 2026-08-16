@@ -111,6 +111,49 @@ select t_denied(:SUITE, 'נוסע לא משנה נסיעה קבועה של נה�
        'select update_template((select id from ride_templates limit 1), p_time := ''05:00'')');
 reset role;
 
+-- ==================== נסיעה שהופכת לקבועה, ורישום קבוע מתוכה ====================
+reset role;
+set role authenticated;
+select t_login(:MGR_A);
+
+select t_check(:SUITE, 'נסיעה רגילה הופכת לנסיעה קבועה',
+       ride_to_template((select id from rides where ride_date = current_date + 2 limit 1))
+         is not null);
+select t_check(:SUITE, 'הנסיעה עצמה הפכה למופע הראשון של התבנית',
+       (select template_id is not null from rides where ride_date = current_date + 2 limit 1));
+select t_denied(:SUITE, 'אי אפשר להפוך פעמיים את אותה נסיעה',
+       'select ride_to_template((select id from rides where ride_date = current_date + 2 limit 1))');
+reset role;
+
+set role authenticated;
+select t_login(:MEM_A);   -- נוסע מאושר באותה נסיעה
+select t_check(:SUITE, 'נוסע נרשם קבוע מתוך הנסיעה שהוא בה',
+       subscribe_to_ride((select id from rides where ride_date = current_date + 2 limit 1))
+         is not null);
+reset role;
+select t_check(:SUITE, 'המנוי נשמר כפעיל',
+       (select count(*) from subscriptions where active) = 1);
+
+set role authenticated;
+select t_login(:MEM_A);
+select unsubscribe_from_ride((select id from rides where ride_date = current_date + 2 limit 1));
+reset role;
+select t_check(:SUITE, 'ביטול הרישום הקבוע מכבה את המנוי',
+       (select count(*) from subscriptions where active) = 0);
+
+-- נהג לא נרשם לנסיעה של עצמו, ואי אפשר להירשם לנסיעה שאינה קבועה
+set role authenticated;
+select t_login(:MGR_A);
+select t_denied(:SUITE, 'נהג לא נרשם קבוע לנסיעה של עצמו',
+       'select subscribe_to_ride((select id from rides where ride_date = current_date + 2 limit 1))');
+reset role;
+
+set role authenticated;
+select t_login(:MEM_A);
+select t_denied(:SUITE, 'אי אפשר להירשם קבוע לנסיעה שאינה חלק מסדרה',
+       'select subscribe_to_ride((select id from rides where ride_date = current_date + 5 limit 1))');
+reset role;
+
 -- ---------------------------------------------------------------- ניקוי
 -- החבילה הזו מוסיפה נסיעה ותבנית לארגון קיים. חבילת המחיקה שרצה אחריה
 -- סופרת שורות, ולכן מה שנוצר כאן נמחק כאן — בדיקה לא משאירה עקבות.

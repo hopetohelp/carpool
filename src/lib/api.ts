@@ -104,4 +104,11 @@ export const updateOrgSettings: typeof live.updateOrgSettings = (...a: Parameter
 export const updateTemplate: typeof live.updateTemplate = (...a: Parameters<typeof live.updateTemplate>) =>
   (impl.updateTemplate as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.updateTemplate>;
 
+export const rideToTemplate: typeof live.rideToTemplate = (...a: Parameters<typeof live.rideToTemplate>) =>
+  (impl.rideToTemplate as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.rideToTemplate>;
+export const subscribeToRide: typeof live.subscribeToRide = (...a: Parameters<typeof live.subscribeToRide>) =>
+  (impl.subscribeToRide as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.subscribeToRide>;
+export const unsubscribeFromRide: typeof live.unsubscribeFromRide = (...a: Parameters<typeof live.unsubscribeFromRide>) =>
+  (impl.unsubscribeFromRide as (...x: unknown[]) => unknown)(...a) as ReturnType<typeof live.unsubscribeFromRide>;
+
 export { resetDemo } from "./apiDemo";

@@ -315,3 +315,16 @@ export const updateTemplate = (
     p_auto: patch.autoApprove ?? null,
     p_apply_future: applyToFuture,
   });
+
+// ---------- נסיעה שהופכת לקבועה, ורישום קבוע מתוכה ----------
+
+/** הנהג הופך נסיעה קיימת לנסיעה קבועה. בלי ימים — אותו יום בשבוע. */
+export const rideToTemplate = (rideId: string, days?: number[]) =>
+  rpc<string>("ride_to_template", { p_ride: rideId, p_days: days ?? null });
+
+/** הנוסע נרשם קבוע לנסיעה שהוא כבר בה, עם נקודת האיסוף שכבר בחר */
+export const subscribeToRide = (rideId: string) =>
+  rpc<string>("subscribe_to_ride", { p_ride: rideId });
+
+export const unsubscribeFromRide = (rideId: string) =>
+  rpc<void>("unsubscribe_from_ride", { p_ride: rideId });

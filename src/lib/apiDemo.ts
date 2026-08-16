@@ -490,3 +490,42 @@ export const updateOrgSettings = async (_orgId: string, settings: Record<string,
   save();
   return ok(state.org);
 };
+
+// ---------- נסיעה שהופכת לקבועה (הדגמה) ----------
+
+export const rideToTemplate = async (rideId: string, days?: number[]) => {
+  const r = state.rides.find((x) => x.id === rideId);
+  if (!r) return ok("");
+  const t = {
+    id: uid("t"), org_id: r.org_id, driver_id: r.driver_id,
+    days_of_week: days ?? [new Date(r.ride_date).getDay()],
+    depart_time: r.depart_time, direction: r.direction,
+    origin_stop_id: r.origin_stop_id, origin_text: r.origin_text,
+    dest_text: r.dest_text, seats_total: r.seats_total,
+    price: r.price, auto_approve: r.auto_approve, active: true,
+  } as unknown as RideTemplate;
+  state.templates.push(t);
+  r.template_id = t.id;
+  save();
+  return ok(t.id);
+};
+
+export const subscribeToRide = async (rideId: string) => {
+  const r = state.rides.find((x) => x.id === rideId);
+  if (!r?.template_id) throw new Error("הנסיעה הזו אינה חלק מנסיעה קבועה.");
+  const tid = r.template_id;
+  if (!state.subscriptions.some((x) => x.template_id === tid && x.member_id === DEMO_ME_ID)) {
+    state.subscriptions.push({ template_id: tid, member_id: DEMO_ME_ID });
+  }
+  save();
+  return ok("");
+};
+
+export const unsubscribeFromRide = async (rideId: string) => {
+  const r = state.rides.find((x) => x.id === rideId);
+  if (!r?.template_id) return ok(null);
+  state.subscriptions = state.subscriptions.filter(
+    (x) => !(x.template_id === r.template_id && x.member_id === DEMO_ME_ID));
+  save();
+  return ok(null);
+};

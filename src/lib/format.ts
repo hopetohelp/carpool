@@ -26,6 +26,55 @@ export function friendlyDate(isoDate: string): string {
   return `יום ${dayName(d.getDay())}, ${shortDate(isoDate)}`;
 }
 
+// ---------------------------------------------------------------- תאריך עברי
+
+/**
+ * מספר לאותיות עבריות: 1 → א׳, 15 → ט״ו, 30 → ל׳.
+ *
+ * חמש־עשרה ושש־עשרה נכתבות ט״ו וט״ז ולא י״ה וי״ו, כדי לא לכתוב צירופים
+ * מהשם המפורש. זה לא קישוט — כך כותבים תאריך עברי, וכתיב אחר ייראה שגוי
+ * למי שמכיר.
+ */
+export function hebrewNumber(n: number): string {
+  if (n <= 0 || n > 400) return String(n);
+  const parts: string[] = [];
+  let left = n;
+  const table: [number, string][] = [
+    [400, "ת"], [300, "ש"], [200, "ר"], [100, "ק"],
+    [90, "צ"], [80, "פ"], [70, "ע"], [60, "ס"], [50, "נ"],
+    [40, "מ"], [30, "ל"], [20, "כ"], [10, "י"],
+    [9, "ט"], [8, "ח"], [7, "ז"], [6, "ו"], [5, "ה"],
+    [4, "ד"], [3, "ג"], [2, "ב"], [1, "א"],
+  ];
+  if (left === 15) return 'ט"ו';
+  if (left === 16) return 'ט"ז';
+  for (const [value, letter] of table) {
+    while (left >= value) { parts.push(letter); left -= value; }
+  }
+  if (parts.length === 1) return parts[0] + "׳";
+  return parts.slice(0, -1).join("") + '"' + parts[parts.length - 1];
+}
+
+// לוח השנה העברי מגיע מהדפדפן עצמו, ולכן שנים מעוברות ואדר א׳/ב׳ נכונים
+// בלי שנצטרך לתחזק טבלה. נשמר בין קריאות כי הוא נבנה מחדש בכל כרטיס.
+const hebFormatter = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", {
+  day: "numeric", month: "long",
+});
+
+/** תאריך עברי מקוצר: "ח׳ באלול" */
+export function hebrewDate(iso: string): string {
+  try {
+    const d = new Date(iso + (iso.length === 10 ? "T00:00:00" : ""));
+    const parts = hebFormatter.formatToParts(d);
+    const day = Number(parts.find((p) => p.type === "day")?.value ?? 0);
+    const month = parts.find((p) => p.type === "month")?.value ?? "";
+    if (!day || !month) return "";
+    return `${hebrewNumber(day)} ב${month}`;
+  } catch {
+    return "";   // דפדפן בלי לוח עברי — פשוט לא מציגים
+  }
+}
+
 /** 07:30:00 -> 07:30 */
 export const shortTime = (t: string) => t.slice(0, 5);
 
